@@ -501,9 +501,9 @@
         <div class="config-item">
           <div class="config-label-row">
             <span class="config-label">Entropy Bonus (β)</span>
-            <span class="config-val" id="valEnt">0.02</span>
+            <span class="config-val" id="valEnt">0.05</span>
           </div>
-          <input type="range" id="inpEnt" min="0.001" max="0.1" value="0.02" step="0.001">
+          <input type="range" id="inpEnt" min="0.001" max="0.1" value="0.05" step="0.001">
           <div class="config-info">Encourages exploration of different weight combinations</div>
         </div>
       </div>
@@ -674,8 +674,15 @@ class NeuralNetwork {
       let r = layerSizes[i];
       let c = layerSizes[i+1];
       let w = [];
-      let b = new Array(c).fill(0.01); // small bias init
+      let b = new Array(c).fill(0.01);
       let scale = Math.sqrt(2.0 / (r + c));
+      
+      // Force final layer logits near zero to start with equal-weight portfolio
+      if (i === layerSizes.length - 2) {
+        scale *= 0.01;
+        b.fill(0);
+      }
+      
       for (let row = 0; row < r; row++) {
         let wr = [];
         for (let col = 0; col < c; col++) {
