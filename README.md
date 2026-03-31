@@ -1,4 +1,4 @@
-<img src="photos/Screenshot 2026-03-27 140805.png" width="100%" alt="DALAL.AI Dashboard" style="border-radius:8px;">
+<img src="Photos/Screenshot%202026-03-27%20140805.png" width="100%" alt="DALAL.AI Dashboard" style="border-radius:8px;">
 
 # DALAL.AI — Live Actor-Critic Portfolio Optimizer
 
@@ -71,10 +71,10 @@ d:\RL\
 ### Screen 1 — NSE Stock Selector
 | | |
 |---|---|
-| <img src="photos/Screenshot 2026-03-27 140805.png" width="500"> | 30 NSE blue-chip stocks with live simulated prices, sector filters, and sparklines. Select 4–10 stocks to build the portfolio universe. |
+| <img src="Photos/Screenshot%202026-03-27%20140805.png" width="500"> | 30 NSE blue-chip stocks with live simulated prices, sector filters, and sparklines. Select 4–10 stocks to build the portfolio universe. |
 
 ### Screen 2 — RL Configuration
-<img src="photos/Screenshot 2026-03-27 140844.png" width="700" alt="Config Screen">
+<img src="Photos/Screenshot%202026-03-27%20140844.png" width="700" alt="Config Screen">
 
 Configure Initial Capital (₹), Risk Profile, NSE Transaction Costs (STT + brokerage + SEBI fees), Training Episodes, Learning Rate α, and Entropy Bonus β.
 
@@ -83,13 +83,13 @@ All four charts update episode-by-episode in real time:
 
 | Chart | Screenshot |
 |---|---|
-| **A. Episode Reward (Learning Curve)** | <img src="photos/Screenshot 2026-03-27 141047.png" width="420"> |
-| **B. Live Portfolio NAV vs Baselines** | <img src="photos/Screenshot 2026-03-27 141055.png" width="420"> |
-| **C. Network Loss (Actor + Critic)** | <img src="photos/Screenshot 2026-03-27 141105.png" width="420"> |
-| **D. Portfolio Weights Evolution** | <img src="photos/Screenshot 2026-03-27 141115.png" width="420"> |
+| **A. Episode Reward (Learning Curve)** | <img src="Photos/Screenshot%202026-03-27%20141047.png" width="420"> |
+| **B. Live Portfolio NAV vs Baselines** | <img src="Photos/Screenshot%202026-03-27%20141055.png" width="420"> |
+| **C. Network Loss (Actor + Critic)** | <img src="Photos/Screenshot%202026-03-27%20141105.png" width="420"> |
+| **D. Portfolio Weights Evolution** | <img src="Photos/Screenshot%202026-03-27%20141115.png" width="420"> |
 
 ### Final Results Modal
-<img src="photos/Screenshot 2026-03-27 140958.png" width="500" alt="Results">
+<img src="Photos/Screenshot%202026-03-27%20140958.png" width="500" alt="Results">
 
 ---
 
