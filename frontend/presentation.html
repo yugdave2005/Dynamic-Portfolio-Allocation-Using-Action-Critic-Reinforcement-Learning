@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DALAL.AI — Actor-Critic Portfolio Optimizer Presentation</title>
+  <style>
+    :root {
+      --bg: #0F1115;
+      --panel: #16181D;
+      --text: #E0E0E0;
+      --text-muted: #8A8680;
+      --acc-orange: #FF8533;
+      --acc-blue: #4A9FFF;
+      --acc-green: #00C851;
+      --acc-red: #FF3D3D;
+      --border: rgba(255,255,255,0.05);
+    }
+    body, html {
+      margin: 0; padding: 0;
+      width: 100vw; height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      overflow: hidden;
+    }
+    
+    .presentation {
+      position: relative;
+      width: 100vw; height: 100vh;
+      perspective: 1000px;
+    }
+
+    .slide {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      padding: 40px 80px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+      transform: translateX(50px);
+    }
+    
+    .slide.active {
+      opacity: 1;
+      transform: translateX(0);
+      pointer-events: all;
+      z-index: 10;
+    }
+    
+    .slide.prev {
+      transform: translateX(-50px);
+    }
+    
+    .header {
+      position: absolute;
+      top: 40px;
+      left: 80px;
+      right: 80px;
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 20px;
+    }
+    
+    .header-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--acc-orange);
+      letter-spacing: 2px;
+    }
+    
+    .header-marks {
+      font-family: monospace;
+      color: var(--acc-blue);
+      font-size: 14px;
+      background: rgba(74, 159, 255, 0.1);
+      padding: 4px 12px;
+      border-radius: 4px;
+    }
+    
+    .content-area {
+      display: flex;
+      gap: 40px;
+      height: 60vh;
+      margin-top: 80px;
+    }
+    
+    .text-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    
+    .image-pane {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--panel);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 20px;
+    }
+    
+    .image-pane img {
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 6px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    
+    h1 {
+      font-size: 48px;
+      margin-bottom: 10px;
+      background: linear-gradient(90deg, #fff, #aaa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    h2 {
+      font-size: 32px;
+      color: var(--acc-orange);
+      margin-bottom: 20px;
+    }
+    
+    ul {
+      list-style-type: none;
+      padding: 0;
+    }
+    
+    li {
+      font-size: 20px;
+      margin-bottom: 24px;
+      line-height: 1.6;
+      color: #ccc;
+      position: relative;
+      padding-left: 28px;
+    }
+    
+    li::before {
+      content: "▹";
+      position: absolute;
+      left: 0;
+      top: 0;
+      color: var(--acc-orange);
+      font-weight: bold;
+      font-size: 22px;
+    }
+    
+    .controls {
+      position: fixed;
+      bottom: 30px;
+      right: 40px;
+      z-index: 100;
+      display: flex;
+      gap: 10px;
+    }
+    
+    .btn {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: monospace;
+      font-size: 16px;
+      transition: 0.2s;
+    }
+    
+    .btn:hover {
+      background: var(--acc-orange);
+      color: #000;
+    }
+    
+    .progress-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      height: 4px;
+      background: var(--acc-orange);
+      transition: width 0.3s ease;
+      z-index: 100;
+    }
+    
+    .highlight { color: #fff; font-weight: 600; }
+    .badge { padding: 3px 8px; border-radius: 4px; font-size: 14px; margin-right: 8px;}
+    .bg-red { background: rgba(255, 61, 61, 0.15); color: var(--acc-red); }
+    .bg-green { background: rgba(0, 200, 81, 0.15); color: var(--acc-green); }
+
+    /* Title Slide Specifics */
+    .title-slide { text-align: center; justify-content: center; align-items: center; }
+    .title-slide h1 { font-size: 64px; text-align: center; }
+    .subtitle { font-size: 24px; color: var(--text-muted); margin-bottom: 40px; }
+    
+  </style>
+</head>
+<body>
+
+  <div class="presentation" id="presentation">
+
+    <!-- SLIDE 1: Title -->
+    <div class="slide active title-slide">
+      <h1>DALAL<span style="color:#FF8533">.AI</span></h1>
+      <div class="subtitle">Dynamic Portfolio Optimization Using Actor-Critic Reinforcement Learning</div>
+      <p style="color:var(--text-muted); font-size: 18px;">Automated Capital Allocation on NSE India</p>
+    </div>
+
+    <!-- SLIDE 2: Problem Statement (Max 2 Marks) -->
+    <div class="slide">
+      <div class="header">
+        <div class="header-title">1. The Problem Space</div>
+        <div class="header-marks">Max 2 Marks</div>
+      </div>
+      <div class="content-area">
+        <div class="text-pane">
+          <ul>
+            <li><span class="highlight">Non-Stationary Markets:</span> Standard algorithms (like Markowitz Mean-Variance) assume fixed statistical properties, which fail in dynamic, crashing, or surging real-world markets.</li>
+            <li><span class="highlight">Transaction Costs Ignored:</span> Most theoretical models allocate capital without accounting for the friction of trading (STT, Brokerage, Slippage), leading to strategies that lose money in practice.</li>
+            <li><span class="highlight">Continuous Decision Making:</span> Markets require constant sequential updates. A decision made today irreversibly alters tomorrow's capital state.</li>
+          </ul>
+        </div>
+        <div class="image-pane">
+          <img src="photos/Screenshot 2026-03-27 140805.png" alt="NSE Universe">
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Why Reinforcement Learning? (Max 8 Marks) -->
+    <div class="slide">
+      <div class="header">
+        <div class="header-title">2. Justification for Reinforcement Learning</div>
+        <div class="header-marks">Max 8 Marks</div>
+      </div>
+      <div class="content-area">
+        <div class="text-pane">
+          <ul>
+            <li><span class="highlight">Model-Free Learning:</span> RL does not need a perfect mathematical formula for the market. It learns to map states (prices/returns) directly to actions (weights).</li>
+            <li><span class="highlight">Markov Decision Process (MDP):</span> The portfolio problem naturally fits MDPs. <br>State = Pricing History. <br>Action = Portfolio Weights. <br>Reward = Net Return - Turnover Cost.</li>
+            <li><span class="highlight">Direct Optimization:</span> Instead of predicting future prices (supervised learning), Policy Gradients optimize directly for our ultimate goal: Maximum Risk-Adjusted Returns.</li>
+            <li><span class="highlight">Exploration vs Exploitation:</span> RL naturally handles the balance between sticking to safe blue-chips (TCS/Reliance) and exploring volatile high-yielders.</li>
+          </ul>
+        </div>
+        <div class="image-pane">
+          <img src="photos/Screenshot 2026-03-27 141047.png" alt="Learning Curve">
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Algorithm Solution Overview (Max 7 Marks) -->
+    <div class="slide">
+      <div class="header">
+        <div class="header-title">3. The Algorithm Solution (Actor-Critic)</div>
+        <div class="header-marks">Part 1/2 • Max 7 Marks</div>
+      </div>
+      <div class="content-area">
+        <div class="text-pane">
+          <h2>Continuous Action Spaces</h2>
+          <ul>
+            <li><span class="highlight">The Environment:</span> We simulate 252 days of NSE market action using Geometric Brownian Motion (GBM) incorporating drift, volatility, and market shocks.</li>
+            <li><span class="highlight">Actor Network (Policy):</span> Outputs a continuous vector of raw logits. We apply <span class="badge bg-blue">Softmax</span> to ensure all weights sum exactly to 1.0 (100% capital).</li>
+            <li><span class="highlight">Critic Network (Value):</span> Estimates the expected cumulative reward from the current state. Used to compute the <strong>Advantage</strong> (A = Reward - V) to tell the Actor if the action was better or worse than expected.</li>
+          </ul>
+        </div>
+        <div class="image-pane">
+          <img src="photos/Screenshot 2026-03-27 141105.png" alt="Network Loss">
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Algorithm Math & Cost Penalty (Max 7 Marks) -->
+    <div class="slide">
+      <div class="header">
+        <div class="header-title">3. Reward Function and Architecture</div>
+        <div class="header-marks">Part 2/2 • Max 7 Marks</div>
+      </div>
+      <div class="content-area">
+        <div class="text-pane">
+          <ul>
+            <li><span class="highlight">Reward Function:</span> <br><code>R = NetReturn - (λ * Turnover)</code><br>We strictly penalize the AI for changing its mind too quickly. `λ` represents NSE STT (0.10%) + Brokerage.</li>
+            <li><span class="highlight">Policy Update Rules:</span> The Agent calculates the policy gradient: <code>∇θ log π(a|s) * Advantage</code>, nudging weights towards more profitable allocations over thousands of simulations.</li>
+            <li><span class="highlight">Live Optimization:</span> Trained via in-browser Neural Networks. Uses Entropy bonuses (β) to prevent early convergence.</li>
+          </ul>
+        </div>
+        <div class="image-pane">
+          <img src="photos/Screenshot 2026-03-27 140844.png" alt="Hyperparameters">
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Results & Evaluation (Max 3 Marks) -->
+    <div class="slide">
+      <div class="header">
+        <div class="header-title">4. Training Results vs Baselines</div>
+        <div class="header-marks">Max 3 Marks</div>
+      </div>
+      <div class="content-area">
+        <div class="text-pane">
+          <ul>
+            <li><span class="highlight">Baseline Outperformance:</span> Post 200 epochs of training, the Agent converged to an optimal policy generating <span class="badge bg-green">28.9% Return</span> vs NIFTY 50's 15.7%.</li>
+            <li><span class="highlight">Risk Adjusted Edge:</span> Achieved a Sharpe Ratio of <strong>2.41</strong>. The Agent actively learned to minimize deep drawdowns (Max Drawdown limited to -8.4%).</li>
+            <li><span class="highlight">Optimal Allocation:</span> AI heavily weighted <code>RELIANCE</code> (95%) due to its high drift and low volatility over the simulated path, cutting exposure to risky tech constraints.</li>
+          </ul>
+        </div>
+        <div class="image-pane">
+          <img src="photos/Screenshot 2026-03-27 140958.png" alt="Final Assessment Modal">
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Conclusion -->
+    <div class="slide title-slide">
+      <h1>Thank You</h1>
+      <div class="subtitle">"Optimal portfolios are not discovered, they are learned."</div>
+      <p style="color:var(--text-muted);">DALAL.AI Live Demonstrations Available on Localhost</p>
+    </div>
+
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="prevSlide()">❮ Prev</button>
+    <button class="btn" onclick="nextSlide()">Next ❯</button>
+  </div>
+  
+  <div class="progress-bar" id="progressBar" style="width: 14.28%;"></div>
+
+  <script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const bar = document.getElementById('progressBar');
+
+    function updateSlides() {
+      slides.forEach((sl, i) => {
+        sl.classList.remove('active', 'prev');
+        if (i === currentSlide) {
+          sl.classList.add('active');
+        } else if (i < currentSlide) {
+          sl.classList.add('prev');
+        }
+      });
+      bar.style.width = ((currentSlide + 1) / slides.length) * 100 + "%";
+    }
+
+    function nextSlide() {
+      if (currentSlide < slides.length - 1) {
+        currentSlide++;
+        updateSlides();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlides();
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'Space') nextSlide();
+      if (e.key === 'ArrowLeft') prevSlide();
+    });
+  </script>
+</body>
+</html>
