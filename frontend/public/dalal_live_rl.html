@@ -475,15 +475,6 @@
           <input type="range" id="inpCost" min="0.10" max="0.50" value="0.20" step="0.01">
           <div class="config-info">STT(0.10%) + Brokerage(0.05%) + SEBI(0.0001%) + Exchange fees</div>
         </div>
-
-        <div class="config-item">
-          <div class="config-label-row">
-            <span class="config-label">Market Fluctuation (Volatility)</span>
-            <span class="config-val" id="valFluc">0.5</span>
-          </div>
-          <input type="range" id="inpFluc" min="0.1" max="2.0" value="0.5" step="0.1">
-          <div class="config-info">Scales the overall systemic and individual stock volatility</div>
-        </div>
       </div>
 
       <!-- RIGHT: Hyperparameters -->
@@ -514,6 +505,15 @@
           </div>
           <input type="range" id="inpEnt" min="0.001" max="0.1" value="0.05" step="0.001">
           <div class="config-info">Encourages exploration of different weight combinations</div>
+        </div>
+
+        <div class="config-item">
+          <div class="config-label-row">
+            <span class="config-label">Market Fluctuation (Volatility)</span>
+            <span class="config-val" id="valFluc">0.5</span>
+          </div>
+          <input type="range" id="inpFluc" min="0.1" max="2.0" value="0.5" step="0.1">
+          <div class="config-info">Scales the overall systemic and individual stock volatility</div>
         </div>
       </div>
     </div>
