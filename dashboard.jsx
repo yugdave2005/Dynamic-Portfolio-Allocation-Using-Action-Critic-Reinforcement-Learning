@@ -62,8 +62,9 @@ const HYPER_PARAMS = [
   { param: 'batch_size', value: '64', why: 'Stable gradient estimates' },
   { param: 'gamma', value: '0.99', why: 'Portfolio returns compound daily' },
   { param: 'clip_range', value: '0.2', why: 'PPO trust region constraint' },
-  { param: 'ent_coef', value: '0.01', why: 'Explore NSE allocation space' },
-  { param: 'learning_rate', value: '3e-4', why: 'Adam default, well-tested' },
+  { param: 'ent_coef', value: '0.05', why: 'Explore NSE allocation space' },
+  { param: 'learning_rate', value: '5e-3', why: 'Initial LR for Actor-Critic' },
+  { param: 'market_fluctuation', value: '0.5', why: 'Scales NSE market systemic volatility shock' }
 ];
 
 // ═══════════════ HELPERS ═══════════════
