@@ -406,9 +406,9 @@
   <!-- ==================== SCREEN 1: STOCK SELECTOR ==================== -->
   <div id="screen1" class="screen active">
     <header>
-      <div>
-        <div class="logo">DALAL<span>.AI</span></div>
-        <div class="subtitle">Actor-Critic Portfolio Optimizer · NSE India</div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <img src="icon.png" alt="DALAL.AI Logo" style="height: 48px; border-radius: 12px;">
+        <div class="subtitle" style="margin-left: 0;">Actor-Critic Portfolio Optimizer · NSE India</div>
       </div>
       <div class="live-badge">
         <div class="pulsing-dot"></div>
@@ -433,9 +433,9 @@
   <!-- ==================== SCREEN 2: RL CONFIGURATION ==================== -->
   <div id="screen2" class="screen">
     <header>
-      <div>
-        <div class="logo">DALAL<span>.AI</span></div>
-        <div class="subtitle">Agent Configuration</div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <img src="icon.png" alt="DALAL.AI Logo" style="height: 48px; border-radius: 12px;">
+        <div class="subtitle" style="margin-left: 0;">Agent Configuration</div>
       </div>
       <button class="ctrl-btn" id="btnBack1">← Back to Stocks</button>
     </header>
@@ -474,6 +474,15 @@
           </div>
           <input type="range" id="inpCost" min="0.10" max="0.50" value="0.20" step="0.01">
           <div class="config-info">STT(0.10%) + Brokerage(0.05%) + SEBI(0.0001%) + Exchange fees</div>
+        </div>
+
+        <div class="config-item">
+          <div class="config-label-row">
+            <span class="config-label">Market Fluctuation (Volatility)</span>
+            <span class="config-val" id="valFluc">0.5</span>
+          </div>
+          <input type="range" id="inpFluc" min="0.1" max="2.0" value="0.5" step="0.1">
+          <div class="config-info">Scales the overall systemic and individual stock volatility</div>
         </div>
       </div>
 
@@ -649,6 +658,31 @@ function softmax(logits) {
   return exps.map(e => e/sum);
 }
 
+function constrainedWeights(logits, N) {
+  const equalWeight = 1.0 / N;
+  const upper = equalWeight * 1.5;
+  const lower = equalWeight * 0.5;
+
+  // Standard softmax on raw logits
+  const maxL = Math.max(...logits);
+  const exps = logits.map(l => Math.exp(l - maxL));
+  const sumE = exps.reduce((a, b) => a + b, 0);
+  let weights = exps.map(e => e / sumE);
+
+  // Iterative projection onto the simplex with box constraints [lower, upper]
+  for (let iter = 0; iter < 20; iter++) {
+    weights = weights.map(w => Math.min(upper, Math.max(lower, w)));
+    const total = weights.reduce((a, b) => a + b, 0);
+    weights = weights.map(w => w / total);
+    const allValid = weights.every(
+      w => w >= lower - 1e-9 && w <= upper + 1e-9
+    );
+    if (allValid) break;
+  }
+
+  return weights;
+}
+
 function formatINR(num) {
   const n = Math.round(num);
   const s = Math.abs(n).toString();
@@ -693,6 +727,10 @@ class NeuralNetwork {
       this.weights.push(w);
       this.biases.push(b);
     }
+    // Scale down ALL weights by 0.1 so first episode starts near equal weight
+    this.weights = this.weights.map(layer =>
+      layer.map(row => row.map(w => w * 0.1))
+    );
   }
 
   forward(input) {
@@ -757,6 +795,7 @@ class NSEEnvironment {
     this.N = stocks.length;
     this.txCost = config.cost; // λ
     this.initCap = config.capital;
+    this.fluctuation = config.fluctuation || 0.5;
     this.epLen = 252; // 1 year of NSE days
     this.prices = []; // Precomputed GBM paths
   }
@@ -772,8 +811,9 @@ class NSEEnvironment {
       let logs = [0];
       for (let i=1; i<=this.epLen; i++) {
         let Z = normalRandom();
-        let marketShock = normalRandom() * 0.15 * Math.sqrt(dt);
-        let ret = (s.annualDrift - 0.5*s.annualVol*s.annualVol)*dt + s.annualVol*Math.sqrt(dt)*Z + s.beta*marketShock;
+        let vol = s.annualVol * this.fluctuation;
+        let marketShock = normalRandom() * 0.15 * this.fluctuation * Math.sqrt(dt);
+        let ret = (s.annualDrift - 0.5*vol*vol)*dt + vol*Math.sqrt(dt)*Z + s.beta*marketShock;
         logs.push(ret);
         path.push(path[i-1] * Math.exp(ret));
       }
@@ -803,7 +843,7 @@ class NSEEnvironment {
   }
 
   step(action) {
-    let newWeights = softmax(action);
+    let newWeights = constrainedWeights(action, this.N);
     let turnover = 0;
     for (let i=0; i<this.N; i++) {
       turnover += Math.abs(newWeights[i] - this.weights[i]);
@@ -818,8 +858,19 @@ class NSEEnvironment {
     this.nav *= Math.exp(netRet);
     this.weights = newWeights;
     
-    // Reward is annualized return - cost
-    let reward = netRet * 252;
+    // Base reward is annualized return - cost
+    let baseReward = netRet * 252;
+    
+    // Diversification penalty via Herfindahl-Hirschman Index (HHI)
+    const hhi = newWeights.reduce((sum, w) => sum + w * w, 0);
+    const maxHHI = 1.0;
+    const minHHI = 1.0 / this.N;
+    const normalizedHHI = (hhi - minHHI) / (maxHHI - minHHI);
+    const diversificationPenalty = 0.05 * normalizedHHI;
+    
+    // Sharpe bonus approximation
+    const sharpeBonus = 0;
+    let reward = baseReward + sharpeBonus - diversificationPenalty;
     
     this.stepCount++;
     let done = this.stepCount >= this.epLen - 1;
@@ -852,7 +903,7 @@ class ActorCriticAgent {
   selectAction(state) {
     let actorOut = this.actor.forward(state);
     let logits = actorOut.output;
-    let weights = softmax(logits);
+    let weights = constrainedWeights(logits, this.actionSize);
     
     // Exploration (Dirichlet noise approx via simple uniform noise)
     let finalWeights = [];
@@ -862,6 +913,8 @@ class ActorCriticAgent {
     for(let i=0; i<this.actionSize; i++) {
       finalWeights.push(weights[i]*(1-this.explorationWeight) + (noise[i]/noiseSum)*this.explorationWeight);
     }
+    // Re-constrain after noise mixing to enforce bounds
+    finalWeights = constrainedWeights(finalWeights.map(w => Math.log(w + 1e-8)), this.actionSize);
     
     let criticOut = this.critic.forward(state);
     let value = criticOut.output[0];
@@ -906,7 +959,7 @@ class ActorCriticAgent {
 
       // Actor Loss = -logProb * Adv - entCoef * Entropy
       let logits = this.actor.forward(state);
-      let probs = softmax(logits.output);
+      let probs = constrainedWeights(logits.output, this.actionSize);
       
       let entropy = 0;
       for(let i=0; i<probs.length; i++) entropy -= probs[i] * Math.log(probs[i] + 1e-8);
@@ -1063,6 +1116,7 @@ document.getElementById('inpCost').oninput = e => document.getElementById('valCo
 document.getElementById('inpEp').oninput = e => document.getElementById('valEp').innerText = e.target.value;
 document.getElementById('inpLR').oninput = e => document.getElementById('valLR').innerText = parseFloat(e.target.value).toFixed(4);
 document.getElementById('inpEnt').oninput = e => document.getElementById('valEnt').innerText = parseFloat(e.target.value).toFixed(3);
+document.getElementById('inpFluc').oninput = e => document.getElementById('valFluc').innerText = parseFloat(e.target.value).toFixed(1);
 
 function initConfigScreen() {
   const row = document.getElementById('selectedStocksRow');
@@ -1121,12 +1175,19 @@ function initCharts() {
   });
 
   const activeStocks = selectedStocks.map(t => STOCKS.find(s=>s.ticker===t));
+  const N = selectedStocks.length;
+  const eqW = 1.0 / N;
+  const upperBound = eqW * 1.5;
+  const lowerBound = eqW * 0.5;
   chartWeights = new Chart(document.getElementById('chartWeights'), {
     type: 'bar',
     data: { labels: selectedStocks, datasets: [
-      { label: 'Allocation %', data: new Array(selectedStocks.length).fill(0), backgroundColor: activeStocks.map(s=>s.color) }
+      { label: 'Allocation %', data: new Array(N).fill(0), backgroundColor: activeStocks.map(s=>s.color) },
+      { label: 'Equal Weight', data: Array(N).fill(eqW * 100), type: 'line', borderColor: 'rgba(255,255,255,0.3)', borderDash: [5, 5], borderWidth: 1, pointRadius: 0 },
+      { label: 'Upper Bound', data: Array(N).fill(upperBound * 100), type: 'line', borderColor: 'rgba(255,153,51,0.3)', borderDash: [3, 3], borderWidth: 1, pointRadius: 0 },
+      { label: 'Lower Bound', data: Array(N).fill(lowerBound * 100), type: 'line', borderColor: 'rgba(74,159,255,0.3)', borderDash: [3, 3], borderWidth: 1, pointRadius: 0 }
     ]},
-    options: { ...commonOptions, scales: { y: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.04)' } } } }
+    options: { ...commonOptions, scales: { y: { min: 0, max: Math.ceil(upperBound * 100) + 10, grid: { color: 'rgba(255,255,255,0.04)' } } } }
   });
 }
 
@@ -1140,7 +1201,8 @@ async function startTraining() {
     cost: parseFloat(document.getElementById('inpCost').value) / 100,
     lr: parseFloat(document.getElementById('inpLR').value),
     gamma: 0.97,
-    entCoef: parseFloat(document.getElementById('inpEnt').value)
+    entCoef: parseFloat(document.getElementById('inpEnt').value),
+    fluctuation: parseFloat(document.getElementById('inpFluc').value)
   };
   maxEpisodes = parseInt(document.getElementById('inpEp').value);
   
@@ -1238,6 +1300,16 @@ async function startTraining() {
     else if (globalEp % 25 === 0) logText(`[EP.${String(globalEp).padStart(3,'0')}] Learning milestone. Policy loss: ${aLoss.toFixed(4)}. Reward trending to ${avg.toFixed(2)}`, 'log-mile');
     else if (epReward < -20) logText(`[EP.${String(globalEp).padStart(3,'0')}] Significant drawdown detected. Agent re-evaluating risk...`, 'log-warn');
     else if (globalEp % 5 === 0) logText(`[EP.${String(globalEp).padStart(3,'0')}] weights converging. Avg Reward: ${avg.toFixed(2)}`);
+    
+    // Verification: log weight bounds at episode 50
+    if (globalEp === 50) {
+      const eqW50 = 1.0 / activeStocks.length;
+      const ub50 = eqW50 * 1.5;
+      const lb50 = eqW50 * 0.5;
+      console.log(`[EP.050 VERIFICATION] N=${activeStocks.length}, equalWeight=${(eqW50*100).toFixed(2)}%, bounds=[${(lb50*100).toFixed(2)}%, ${(ub50*100).toFixed(2)}%]`);
+      console.log(`[EP.050 VERIFICATION] max(weights)=${(Math.max(...finalAction)*100).toFixed(2)}% < upperBound=${(ub50*100).toFixed(2)}% → ${Math.max(...finalAction) < ub50 + 1e-9}`);
+      console.log(`[EP.050 VERIFICATION] min(weights)=${(Math.min(...finalAction)*100).toFixed(2)}% > lowerBound=${(lb50*100).toFixed(2)}% → ${Math.min(...finalAction) > lb50 - 1e-9}`);
+    }
 
     let statusStr = globalEp < maxEpisodes * 0.2 ? 'EXPLORING' : globalEp < maxEpisodes * 0.8 ? 'LEARNING' : 'CONVERGING';
     document.getElementById('mStatus').innerText = statusStr;
@@ -1296,10 +1368,19 @@ function showFinalModal(cap, agentN, eqN, nifN, stocks, wts) {
   m.classList.add('show');
   
   setTimeout(() => {
+    const Nf = stocks.length;
+    const eqWf = 1.0 / Nf;
+    const ubf = eqWf * 1.5;
+    const lbf = eqWf * 0.5;
     new Chart(document.getElementById('chartFinal'), {
       type: 'bar',
-      data: { labels: stocks.map(s=>s.ticker), datasets: [{ label: 'Final Weight %', data: wts.map(x=>x*100), backgroundColor: stocks.map(s=>s.color) }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.04)' } } } }
+      data: { labels: stocks.map(s=>s.ticker), datasets: [
+        { label: 'Final Weight %', data: wts.map(x=>x*100), backgroundColor: stocks.map(s=>s.color) },
+        { label: 'Equal Weight', data: Array(Nf).fill(eqWf * 100), type: 'line', borderColor: 'rgba(255,255,255,0.3)', borderDash: [5, 5], borderWidth: 1, pointRadius: 0 },
+        { label: 'Upper Bound', data: Array(Nf).fill(ubf * 100), type: 'line', borderColor: 'rgba(255,153,51,0.3)', borderDash: [3, 3], borderWidth: 1, pointRadius: 0 },
+        { label: 'Lower Bound', data: Array(Nf).fill(lbf * 100), type: 'line', borderColor: 'rgba(74,159,255,0.3)', borderDash: [3, 3], borderWidth: 1, pointRadius: 0 }
+      ]},
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: Math.ceil(ubf * 100) + 10, grid: { color: 'rgba(255,255,255,0.04)' } } } }
     });
   }, 500);
 }
